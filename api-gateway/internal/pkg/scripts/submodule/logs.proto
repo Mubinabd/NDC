@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+option go_package = "/internal/pkg/genproto";
+
+package protos;
+
+service LogService {
+  rpc Create(LogCreateRequest) returns (LogCreateResponse);
+  rpc GetDetail(GetId) returns (LogGetResponse);
+  rpc Update(LogUpdateRequest) returns (LogVoid);
+  rpc Delete(GetId) returns (LogVoid);
+  rpc GetList(FilterLog) returns (LogGetAll);
+}
+
+message LogCreateRequest {
+  string level = 1;
+  string message = 2;
+  string service_name = 3;
+}
+
+message LogCreateResponse {
+  int64 id = 1;
+  string level = 2;
+  string message = 3;
+  string service_name = 4;
+}
+
+message LogGetResponse {
+  int64 id = 1;
+  string level = 2;
+  string message = 3;
+  string service_name = 4;
+  string created_at = 5;
+  int64 created_by = 6;
+}
+
+message LogGetAll {
+  repeated LogGetResponse log = 1;
+  int32 count = 2;
+}
+
+message LogUpdateRequest {
+  int64 id = 1;
+  string level = 2;
+  string message = 3;
+  string service_name = 4;
+}
+
+message FilterLog {
+  int64 limit = 1;
+  int64 offset = 2;
+  int64 page = 3;
+  string level = 4;
+  string service_name = 5;
+}
+
+message GetId {
+  int64 id = 1;
+}
+
+message LogVoid {};

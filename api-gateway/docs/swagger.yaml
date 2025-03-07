@@ -1,0 +1,875 @@
+basePath: /
+definitions:
+  genproto.LogCreateRequest:
+    properties:
+      level:
+        type: string
+      message:
+        type: string
+      service_name:
+        type: string
+    type: object
+  genproto.LogGetAll:
+    properties:
+      count:
+        type: integer
+      log:
+        items:
+          $ref: '#/definitions/genproto.LogGetResponse'
+        type: array
+    type: object
+  genproto.LogGetResponse:
+    properties:
+      created_at:
+        type: string
+      created_by:
+        type: integer
+      id:
+        type: integer
+      level:
+        type: string
+      message:
+        type: string
+      service_name:
+        type: string
+    type: object
+  genproto.LogUpdateRequest:
+    properties:
+      id:
+        type: integer
+      level:
+        type: string
+      message:
+        type: string
+      service_name:
+        type: string
+    type: object
+  genproto.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  genproto.PostCreateRequest:
+    properties:
+      content:
+        type: string
+      title:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  genproto.PostGet:
+    properties:
+      content:
+        type: string
+      created_at:
+        type: string
+      created_by:
+        type: integer
+      id:
+        type: integer
+      title:
+        type: string
+      user:
+        $ref: '#/definitions/genproto.User'
+      user_id:
+        type: integer
+    type: object
+  genproto.PostGetAll:
+    properties:
+      count:
+        type: integer
+      post:
+        items:
+          $ref: '#/definitions/genproto.PostGet'
+        type: array
+    type: object
+  genproto.PostGetResponse:
+    properties:
+      content:
+        type: string
+      created_at:
+        type: string
+      created_by:
+        type: integer
+      id:
+        type: integer
+      title:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  genproto.PostUpdateRequest:
+    properties:
+      content:
+        type: string
+      id:
+        type: integer
+      title:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  genproto.User:
+    properties:
+      email:
+        type: string
+      first_name:
+        type: string
+      gender:
+        type: string
+      id:
+        type: integer
+      last_name:
+        type: string
+      phone_number:
+        type: string
+      role:
+        type: string
+      username:
+        type: string
+    type: object
+  genproto.UserCreateRequest:
+    properties:
+      email:
+        type: string
+      first_name:
+        type: string
+      gender:
+        type: string
+      last_name:
+        type: string
+      password:
+        type: string
+      phone_number:
+        type: string
+      role:
+        type: string
+      username:
+        type: string
+    type: object
+  genproto.UserGetAll:
+    properties:
+      count:
+        type: integer
+      user:
+        items:
+          $ref: '#/definitions/genproto.UserGetList'
+        type: array
+    type: object
+  genproto.UserGetList:
+    properties:
+      count:
+        type: integer
+      created_at:
+        type: string
+      email:
+        type: string
+      first_name:
+        type: string
+      gender:
+        type: string
+      id:
+        type: integer
+      last_name:
+        type: string
+      phone_number:
+        type: string
+      role:
+        type: string
+      username:
+        type: string
+    type: object
+  genproto.UserGetResponse:
+    properties:
+      created_at:
+        type: string
+      created_by:
+        type: integer
+      email:
+        type: string
+      first_name:
+        type: string
+      gender:
+        type: string
+      id:
+        type: integer
+      last_name:
+        type: string
+      phone_number:
+        type: string
+      role:
+        type: string
+      username:
+        type: string
+    type: object
+  genproto.UserRecoverPasswordRequest:
+    properties:
+      code:
+        type: string
+      email:
+        type: string
+      new_password:
+        type: string
+    type: object
+  genproto.UserUpdateRequest:
+    properties:
+      email:
+        type: string
+      first_name:
+        type: string
+      gender:
+        type: string
+      id:
+        type: integer
+      last_name:
+        type: string
+      phone_number:
+        type: string
+      role:
+        type: string
+      username:
+        type: string
+    type: object
+  token.Tokens:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+      role:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: API for Instant Delivery resources
+  title: NDC Post Project API Documentation
+  version: "1.0"
+paths:
+  /api/v1/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user with email and password
+      parameters:
+      - description: User login credentials
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/genproto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: JWT tokens
+          schema:
+            $ref: '#/definitions/token.Tokens'
+        "400":
+          description: Invalid request payload
+          schema:
+            type: string
+        "401":
+          description: Invalid email or password
+          schema:
+            type: string
+      summary: Login a user
+      tags:
+      - login
+  /api/v1/logs/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a log by its ID
+      parameters:
+      - description: Log ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Log deleted successfully
+          schema:
+            type: string
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "404":
+          description: Log not found
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Delete Log
+      tags:
+      - Log
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a log by its ID
+      parameters:
+      - description: Log ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Log details
+          schema:
+            $ref: '#/definitions/genproto.LogGetResponse'
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "404":
+          description: Log not found
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get Log
+      tags:
+      - Log
+  /api/v1/logs/create:
+    post:
+      consumes:
+      - application/json
+      description: Create a new log
+      parameters:
+      - description: Log data
+        in: body
+        name: log
+        required: true
+        schema:
+          $ref: '#/definitions/genproto.LogCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Log created successfully
+          schema:
+            type: string
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Create Log
+      tags:
+      - Log
+  /api/v1/logs/list:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a list of logs with pagination
+      parameters:
+      - description: Limit
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      - description: Page
+        in: query
+        name: page
+        type: integer
+      - description: Level
+        in: query
+        name: level
+        type: string
+      - description: ServiceName
+        in: query
+        name: service_name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of logs
+          schema:
+            $ref: '#/definitions/genproto.LogGetAll'
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get Logs
+      tags:
+      - Log
+  /api/v1/logs/update:
+    patch:
+      consumes:
+      - application/json
+      description: Update an existing log
+      parameters:
+      - description: Log data
+        in: body
+        name: log
+        required: true
+        schema:
+          $ref: '#/definitions/genproto.LogUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Log updated successfully
+          schema:
+            type: string
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Update Log
+      tags:
+      - Log
+  /api/v1/posts/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a post by its ID
+      parameters:
+      - description: Post ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Post deleted successfully
+          schema:
+            type: string
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "404":
+          description: Post not found
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Delete Post
+      tags:
+      - Post
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a post by its ID
+      parameters:
+      - description: Post ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Post details
+          schema:
+            $ref: '#/definitions/genproto.PostGetResponse'
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "404":
+          description: Post not found
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get Post
+      tags:
+      - Post
+  /api/v1/posts/create:
+    post:
+      consumes:
+      - application/json
+      description: Create a new post
+      parameters:
+      - description: Post data
+        in: body
+        name: post
+        required: true
+        schema:
+          $ref: '#/definitions/genproto.PostCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Post created successfully
+          schema:
+            type: string
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Create Post
+      tags:
+      - Post
+  /api/v1/posts/list:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a list of posts with pagination
+      parameters:
+      - description: Limit
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      - description: Page
+        in: query
+        name: page
+        type: integer
+      - description: UserID
+        in: query
+        name: user_id
+        type: integer
+      - description: Content
+        in: query
+        name: content
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of posts
+          schema:
+            $ref: '#/definitions/genproto.PostGetAll'
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get Posts
+      tags:
+      - Post
+  /api/v1/posts/update:
+    patch:
+      consumes:
+      - application/json
+      description: Update an existing post
+      parameters:
+      - description: Post data
+        in: body
+        name: post
+        required: true
+        schema:
+          $ref: '#/definitions/genproto.PostUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Post updated successfully
+          schema:
+            type: string
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Update Post
+      tags:
+      - Post
+  /api/v1/users/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a user by its ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User deleted successfully
+          schema:
+            type: string
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "404":
+          description: User not found
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Delete User
+      tags:
+      - User
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a user by its ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User details
+          schema:
+            $ref: '#/definitions/genproto.UserGetResponse'
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "404":
+          description: User not found
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get User
+      tags:
+      - User
+  /api/v1/users/create:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user
+      parameters:
+      - description: User data
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/genproto.UserCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User created successfully
+          schema:
+            type: string
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Create User
+      tags:
+      - User
+  /api/v1/users/list:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a list of users with pagination
+      parameters:
+      - description: Limit
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      - description: Page
+        in: query
+        name: page
+        type: integer
+      - description: Role
+        in: query
+        name: role
+        type: string
+      - description: Username
+        in: query
+        name: username
+        type: string
+      - description: FirstName
+        in: query
+        name: firstname
+        type: string
+      - description: LastName
+        in: query
+        name: lastname
+        type: string
+      - description: Gender
+        in: query
+        name: gender
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of users
+          schema:
+            $ref: '#/definitions/genproto.UserGetAll'
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get Users
+      tags:
+      - User
+  /api/v1/users/update:
+    patch:
+      consumes:
+      - application/json
+      description: Update an existing user
+      parameters:
+      - description: User data
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/genproto.UserUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User updated successfully
+          schema:
+            type: string
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Update User
+      tags:
+      - User
+  /api/v1/users/user-password:
+    put:
+      consumes:
+      - application/json
+      description: Updates the password to new one
+      parameters:
+      - description: Change Password Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/genproto.UserRecoverPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Password successfully updated
+          schema:
+            type: string
+        "400":
+          description: Invalid request payload
+          schema:
+            type: string
+        "401":
+          description: Incorrect verification code
+          schema:
+            type: string
+        "404":
+          description: Verification code expired or email not found
+          schema:
+            type: string
+        "500":
+          description: Error updating password
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Change password
+      tags:
+      - user
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

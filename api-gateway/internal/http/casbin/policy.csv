@@ -1,0 +1,25 @@
+p, admin, /api/v1/posts/create, POST
+p, admin, /api/v1/posts/:id, GET
+p, user, /api/v1/posts/:id, GET
+p, admin, /api/v1/posts/update, PATCH
+p, admin, /api/v1/posts/delete/:id, DELETE
+p, admin, /api/v1/posts/list, GET
+p, user, /api/v1/posts/list, GET
+
+p, admin, /api/v1/users/create, POST
+p, admin, /api/v1/users/:id, GET
+p, user, /api/v1/users/:id, GET
+p, admin, /api/v1/users/update, PATCH
+p, admin, /api/v1/users/delete/:id, DELETE
+p, admin, /api/v1/users/list, GET
+p, user, /api/v1/users/list, GET
+p, admin, /api/v1/users/user-password, PUT
+p, /api/v1/login, POST
+
+p, admin, /api/v1/logs/create, POST
+p, admin, /api/v1/logs/:id, GET
+p, user, /api/v1/logs/:id, GET
+p, admin, /api/v1/logs/update, PATCH
+p, admin, /api/v1/logs/delete/:id, DELETE
+p, admin, /api/v1/logs/list, GET
+p, user, /api/v1/logs/list, GET

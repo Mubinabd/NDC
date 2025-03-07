@@ -1,0 +1,3 @@
+[submodule "internal/pkg/ndc_submodule"]
+	path = internal/pkg/ndc_submodule
+	url = https://github.com/Mubinabd/ndc_submodule.git

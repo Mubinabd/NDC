@@ -1,0 +1,3 @@
+[submodule "ndc_submodule"]
+	path = ndc_submodule
+	url = https://github.com/Mubinabd/ndc_submodule.git
