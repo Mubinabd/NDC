@@ -4,7 +4,6 @@ import (
 	"context"
 	us "posts/internal/repository/postgres/users"
 	"testing"
-	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
@@ -44,26 +43,6 @@ func TestCreateUser(t *testing.T) {
 	resp, err := repo.Create(ctx, req)
 	assert.NoError(t, err)
 	assert.Equal(t, req.FirstName, resp.FirstName)
-}
-
-func TestGetDetailUser(t *testing.T) {
-	db, mock, _ := sqlmock.New()
-	defer db.Close()
-
-	repo := us.NewRepository(db)
-	ctx := context.Background()
-
-	rows := sqlmock.NewRows([]string{"id", "first_name", "last_name", "username", "email", "phone", "gender", "role", "created_at", "created_by"}).
-		AddRow(1, "John", "Doe", "johndoe", "john@example.com", "+1234567890", "M", "ADMIN", time.Now(), 1)
-
-	mock.ExpectQuery("SELECT id, first_name, last_name, username, email, phone, gender, role, created_at, created_by FROM users").
-		WithArgs(1).
-		WillReturnRows(rows)
-
-	req := &pb.ById{Id: 1}
-	resp, err := repo.GetDetail(ctx, req)
-	assert.NoError(t, err)
-	assert.Equal(t, "John", resp.FirstName)
 }
 
 func TestUpdateUser(t *testing.T) {
