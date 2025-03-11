@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	token "posts/internal/pkg/token"
+	"posts/internal/pkg/token"
 
 	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
@@ -55,7 +55,7 @@ func GetRole(r *http.Request) (string, error) {
 	} else if strings.Contains(jwtToken, "Basic") {
 		return "unauthorized", nil
 	}
-	claims, err = token.ExtractClaims(jwtToken, key)
+	claims, err = token.ExtractClaim(jwtToken)
 	log.Printf("Claims--------------------------------: %+v\n", claims)
 
 	if err != nil {

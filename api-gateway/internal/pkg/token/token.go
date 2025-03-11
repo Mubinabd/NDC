@@ -18,13 +18,13 @@ type Tokens struct {
 	Role         string `json:"role"`
 }
 
-func GenerateJWTToken(userID int64, username string, token string) *Tokens {
+func GenerateJWTToken(userID int64, email string, token string) *Tokens {
 	accessToken := jwt.New(jwt.SigningMethodHS256)
 	refreshToken := jwt.New(jwt.SigningMethodHS256)
 
 	claims := accessToken.Claims.(jwt.MapClaims)
 	claims["user_id"] = userID
-	claims["username"] = username
+	claims["email"] = email
 	claims["token"] = token
 	claims["iat"] = time.Now().Unix()
 	claims["exp"] = time.Now().Add(180 * time.Minute).Unix() // Token expires in 3 minutes
@@ -35,7 +35,7 @@ func GenerateJWTToken(userID int64, username string, token string) *Tokens {
 
 	rftClaims := refreshToken.Claims.(jwt.MapClaims)
 	rftClaims["user_id"] = userID
-	rftClaims["username"] = username
+	rftClaims["email"] = email
 	rftClaims["token"] = token
 	rftClaims["iat"] = time.Now().Unix()
 	rftClaims["exp"] = time.Now().Add(24 * time.Hour).Unix() // Refresh token expires in 24 hours

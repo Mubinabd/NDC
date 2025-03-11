@@ -1,0 +1,6 @@
+[submodule "post-service/internal/pkg/ndc_submodule"]
+	path = post-service/internal/pkg/ndc_submodule
+	url = git@github.com:Mubinabd/ndc_submodule.git
+[submodule "api-gateway/internal/pkg/ndc_submodule"]
+	path = api-gateway/internal/pkg/ndc_submodule
+	url = git@github.com:Mubinabd/ndc_submodule.git

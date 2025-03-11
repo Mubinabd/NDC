@@ -1,13 +1,13 @@
 Context:
   Timeout: "30s"
 
-PostgresHost: "localhost"
-PostgresPort: "5432"
+PostgresHost: "postgres-db"
+PostgresPort: "5437"
 PostgresUser: "postgres"
 PostgresPassword: "1"
 PostgresDatabase: "posts"
 
-KafkaUrl: ":9092"
+KafkaUrl: "kafka_posts:9092"
 GRPCPort: ":7001"
 
 SMTP_SENDER: "bahodirovamubina505@gmail.com"

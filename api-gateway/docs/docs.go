@@ -832,7 +832,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "user"
+                    "User"
                 ],
                 "summary": "Change password",
                 "parameters": [

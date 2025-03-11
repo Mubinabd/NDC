@@ -1,102 +1,100 @@
 version: '3.9'
+
 services:
-  minio:
-    container_name: minio
-    image: quay.io/minio/minio:latest
-    volumes:
-      - minio:/data
+  gateway:
+    container_name: gateway
+    build: ./api-gateway
     ports:
-      - 9000:9000
-      - 9001:9001
-    environment:
-      MINIO_ROOT_USER: 'saladin2098'
-      MINIO_ROOT_PASSWORD: 'minio_pass'
-      MINIO_ADDRESS: ':9000'
-      MINIO_CONSOLE_ADDRESS: ':9001'
-    command: minio server /data
+      - "8080:8080"
+    depends_on:
+      - post_service
     networks:
-      - muallimah
+      - posts
+
+        
+  postgres-db:
+    container_name: posts
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1
+      PGDATA: /data/postgres
+      POSTGRES_DB: posts
+    volumes:
+      - db:/var/lib/postgresql/data
+    ports:
+      - "5437:5432"
+    networks:
+      - posts
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d posts" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   migrate:
     image: migrate/migrate
     networks:
-      - muallimah
+      - posts
     volumes:
-      - ./migrations:/migrations
-    command: [ "-path", "/migrations", "-database",
-               "postgres://postgres:00salom00@muallimah_db:5432/muallimah_db?sslmode=disable",
-               "up" ]
+      - ./api-gateway/internal/pkg/scripts/migration:/migrations
+    command:
+      [ "-path", "/migrations", "-database",
+        "postgres://postgres:1@postgres-db:5432/posts?sslmode=disable",
+        "up" ]
     depends_on:
-      - postgres-db
-
-
-  postgres-db:
-    container_name: muallimah_db
-    image: postgres:latest
-    environment:
-      PGUSER: postgres
-      POSTGRES_PASSWORD: 00salom00
-      PGDATA: /data/postgres
-      POSTGRES_DB: muallimah_db
-    volumes:
-      - db:/muallimah-database/muallimah-memory
-    ports:
-      - "5437:5432"
-    networks:
-      - muallimah
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -d postgres"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
+      postgres-db:
+        condition: service_healthy
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.4
-    container_name: zookeeper_muallimah
+    container_name: zookeeper_posts
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     ports:
-      - 22181:2181
+      - "22181:2181"
     networks:
-      - muallimah
+      - posts
 
   kafka:
     image: confluentinc/cp-kafka:7.4.4
-    container_name: kafka_muallimah
+    container_name: kafka_posts
     depends_on:
       - zookeeper
     ports:
-      - 29092:9092
+      - "29092:9092"
     networks:
-      - muallimah
+      - posts
     environment:
       KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper_muallimah:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka_muallimah:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper_posts:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka_posts:9092,PLAINTEXT_HOST://localhost:29092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
-  course_service:
-    container_name: muallimah_course
-    build: .
+  post_service:
+    container_name: posts_service
+    build: ./post-service
     depends_on:
-      - kafka
-      - minio
-
+      postgres-db:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: posts
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "1"
+      POSTGRES_DATABASE: posts
     ports:
-      - "50052:50052"
+      - "7001:7001"
     networks:
-      - muallimah
-volumes:
-  minio:
-  db:
-# Docker Networks
+      - posts
+
 networks:
-  muallimah:
-    external: true
-    name: muallimah
+  posts:
     driver: bridge
+
+volumes:
+  db:

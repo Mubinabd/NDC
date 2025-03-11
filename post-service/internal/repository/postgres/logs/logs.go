@@ -19,11 +19,11 @@ func NewRepository(database *sql.DB) *Repository {
 }
 
 func (r *Repository) Create(ctx context.Context, request *pb.LogCreateRequest) (*pb.LogCreateResponse, error) {
-	query := `INSERT INTO posts (
+	query := `INSERT INTO logs (
 								level, 
 								message, 
 								service_name) 
-	          VALUES (?, ?, ?)`
+	          VALUES ($1, $2, $3)`
 
 	_, err := r.DB.ExecContext(
 		ctx,
@@ -50,10 +50,9 @@ func (r *Repository) GetDetail(ctx context.Context, request *pb.GetId) (*pb.LogG
 					level, 
 					message, 
 					service_name, 
-					created_at,
-					created_by
+					created_at
 	          FROM logs 
-			  WHERE id = ?`
+			  WHERE id = $1`
 	row := r.DB.QueryRowContext(ctx, query, request.Id)
 
 	var log pb.LogGetResponse
@@ -63,7 +62,6 @@ func (r *Repository) GetDetail(ctx context.Context, request *pb.GetId) (*pb.LogG
 		&log.Message,
 		&log.ServiceName,
 		&log.CreatedAt,
-		&log.CreatedBy,
 	)
 	if err != nil {
 		return nil, err
@@ -93,12 +91,14 @@ func (r *Repository) Update(ctx context.Context, request *pb.LogUpdateRequest) (
 		conditions = append(conditions, fmt.Sprintf("service_name = $%d", len(arg)))
 	}
 
-	if len(conditions) > 0 {
-		query += ", " + strings.Join(conditions, ", ")
+	if len(conditions) == 0 {
+		return nil, fmt.Errorf("no fields to update")
 	}
 
-	query += fmt.Sprintf(" WHERE id = ?", len(arg)+1)
+	query += ", " + strings.Join(conditions, ", ")
+
 	arg = append(arg, request.Id)
+	query += fmt.Sprintf(" WHERE id = $%d", len(arg))
 
 	_, err := r.DB.ExecContext(ctx, query, arg...)
 	if err != nil {
@@ -108,49 +108,61 @@ func (r *Repository) Update(ctx context.Context, request *pb.LogUpdateRequest) (
 }
 
 func (r *Repository) Delete(ctx context.Context, request *pb.GetId) (*pb.LogVoid, error) {
-	query := `update logs set deleted_at = EXTRACT(EPOCH FROM NOW) WHERE id = ? and deleted_at is null`
+	query := `update logs set deleted_at = NOW() WHERE id = $1`
 	_, err := r.DB.ExecContext(ctx, query, request.Id)
 	return &pb.LogVoid{}, err
 }
 
 func (r *Repository) GetList(ctx context.Context, filter *pb.FilterLog) (*pb.LogGetAll, error) {
+	// Asosiy WHERE sharti
+	where := `WHERE deleted_at IS NULL`
+	var args []interface{}
 
-	where := fmt.Sprintf(`where deleted_at isnull`)
+	// Agar Level berilgan bo‘lsa, shartga qo‘shamiz
 	if filter.Level != "" {
-		where += fmt.Sprintf(" and level = '%s'", filter.Level)
-	}
-	if filter.ServiceName != "" {
-		where += fmt.Sprintf(" and service_name = '%s'", filter.ServiceName)
+		args = append(args, filter.Level)
+		where += fmt.Sprintf(" AND level = $%d", len(args))
 	}
 
-	var limit, offset int64
-	if filter.Limit != 0 {
+	// Agar ServiceName berilgan bo‘lsa, shartga qo‘shamiz
+	if filter.ServiceName != "" {
+		args = append(args, filter.ServiceName)
+		where += fmt.Sprintf(" AND service_name = $%d", len(args))
+	}
+
+	// Limit va Offset hisoblash
+	limit := int64(10) // Default limit
+	offset := int64(0) // Default offset
+
+	if filter.Limit > 0 {
 		limit = filter.Limit
 	}
-	if filter.Page != 0 && filter.Limit != 0 {
-		offst := (filter.Page - 1) * (filter.Limit)
-		filter.Offset = offst
-	}
-	if filter.Offset != 0 {
-		offset = filter.Offset
+	if filter.Page > 0 && filter.Limit > 0 {
+		offset = (filter.Page - 1) * filter.Limit
 	}
 
-	query := fmt.Sprintf(`SELECT 
-					COUNT(id) OVER () AS total_count,
-					id, 
-					level, 
-					message, 
-					service_name, 
-					created_at 
-	          FROM logs 
-			  %s order by created_at desc %s %s `, where, limit, offset)
+	args = append(args, limit, offset)
 
-	rows, err := r.QueryContext(ctx, query)
+	// Yakuniy SQL so‘rovi
+	query := fmt.Sprintf(`
+		SELECT 
+			COUNT(id) OVER () AS total_count,
+			id, 
+			level, 
+			message, 
+			service_name, 
+			created_at 
+		FROM logs 
+		%s ORDER BY created_at DESC LIMIT $%d OFFSET $%d`, where, len(args)-1, len(args))
+
+	// Queryni ishlatamiz
+	rows, err := r.DB.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, errors.New("querying logs")
 	}
 	defer rows.Close()
 
+	// Natijalarni o‘qish
 	var response []*pb.LogGetResponse
 	var count int32
 	for rows.Next() {

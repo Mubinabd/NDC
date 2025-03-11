@@ -1,14 +1,14 @@
 Context:
   Timeout: "30s"
 
-PostgresHost: "localhost"
-PostgresPort: "5432"
+PostgresHost: "postgres-db"
+PostgresPort: "5437"
 PostgresUser: "postgres"
 PostgresPassword: "1"
 PostgresDatabase: "posts"
 
-KafkaUrl: ":9092"
-GRPCPort: ":7001"
+KafkaUrl: "kafka_posts:9092"
+GRPCPort: "posts_service:7001"
 HTTP_PORT: ":8080"
 SMTP_SENDER: "bahodirovamubina505@gmail.com"
 SMTP_PASSWORD: "qext gmhd owss kqpe"

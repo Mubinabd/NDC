@@ -866,7 +866,7 @@ paths:
       - BearerAuth: []
       summary: Change password
       tags:
-      - user
+      - User
 securityDefinitions:
   BearerAuth:
     in: header

@@ -3,8 +3,8 @@ package posts
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
+	"log"
 	"strings"
 
 	pb "posts/internal/pkg/genproto"
@@ -23,7 +23,7 @@ func (r *Repository) Create(ctx context.Context, request *pb.PostCreateRequest) 
 								user_id, 
 								title, 
 								content) 
-	          VALUES (?, ?, ?)`
+	          VALUES ($1, $2, $3)`
 
 	_, err := r.DB.ExecContext(
 		ctx,
@@ -50,10 +50,9 @@ func (r *Repository) GetDetail(ctx context.Context, request *pb.GetById) (*pb.Po
 					user_id, 
 					title, 
 					content, 
-					created_at,
-					created_by
+					created_at
 	          FROM posts 
-			  WHERE id = ?`
+			  WHERE id = $1`
 	row := r.DB.QueryRowContext(ctx, query, request.Id)
 
 	var post pb.PostGetResponse
@@ -63,7 +62,6 @@ func (r *Repository) GetDetail(ctx context.Context, request *pb.GetById) (*pb.Po
 		&post.Title,
 		&post.Content,
 		&post.CreatedAt,
-		&post.CreatedBy,
 	)
 	if err != nil {
 		return nil, err
@@ -74,99 +72,115 @@ func (r *Repository) GetDetail(ctx context.Context, request *pb.GetById) (*pb.Po
 
 func (r *Repository) Update(ctx context.Context, request *pb.PostUpdateRequest) (*pb.PostVoid, error) {
 	query := `UPDATE posts SET updated_at = NOW()`
-
-	var arg []interface{}
-	var conditions []string
+	var args []interface{}
+	var updates []string
 
 	if request.UserId != 0 {
-		arg = append(arg, request.UserId)
-		conditions = append(conditions, fmt.Sprintf("user_id = $%d", len(arg)))
+		args = append(args, request.UserId)
+		updates = append(updates, fmt.Sprintf("user_id = $%d", len(args)))
 	}
 
 	if request.Title != "" && request.Title != "string" {
-		arg = append(arg, request.Title)
-		conditions = append(conditions, fmt.Sprintf("title = $%d", len(arg)))
+		args = append(args, request.Title)
+		updates = append(updates, fmt.Sprintf("title = $%d", len(args)))
 	}
 
 	if request.Content != "" && request.Content != "string" {
-		arg = append(arg, request.Content)
-		conditions = append(conditions, fmt.Sprintf("content = $%d", len(arg)))
+		args = append(args, request.Content)
+		updates = append(updates, fmt.Sprintf("content = $%d", len(args)))
 	}
 
-	if len(conditions) > 0 {
-		query += ", " + strings.Join(conditions, ", ")
+	if len(updates) == 0 {
+		return nil, fmt.Errorf("no fields to update")
 	}
 
-	query += fmt.Sprintf(" WHERE id = ?", len(arg)+1)
-	arg = append(arg, request.Id)
+	query += ", " + strings.Join(updates, ", ")
 
-	_, err := r.DB.ExecContext(ctx, query, arg...)
+	args = append(args, request.Id)
+	query += fmt.Sprintf(" WHERE id = $%d", len(args))
+
+	_, err := r.DB.ExecContext(ctx, query, args...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("updating post: %w", err)
 	}
 	return &pb.PostVoid{}, nil
 }
 
 func (r *Repository) Delete(ctx context.Context, request *pb.GetById) (*pb.PostVoid, error) {
-	query := `update posts set deleted_at = EXTRACT(EPOCH FROM NOW) WHERE id = ? and deleted_at is null`
+	query := `update posts set deleted_at =Now() WHERE id = $1 `
 	_, err := r.DB.ExecContext(ctx, query, request.Id)
 	return &pb.PostVoid{}, err
 }
 
 func (r *Repository) GetList(ctx context.Context, filter *pb.FilterPost) (*pb.PostGetAll, error) {
+	var args []interface{}
+	var conditions []string
+	argID := 1
 
-	where := fmt.Sprintf(`where p.deleted_at isnull`)
+	conditions = append(conditions, "p.deleted_at IS NULL")
+
 	if filter.UserId != 0 {
-		where += fmt.Sprintf(" and p.user_id = '%d'", filter.UserId)
+		conditions = append(conditions, fmt.Sprintf("p.user_id = $%d", argID))
+		args = append(args, filter.UserId)
+		argID++
 	}
 	if filter.Content != "" {
-		where += fmt.Sprintf(" and p.content = '%s'", filter.Content)
+		conditions = append(conditions, fmt.Sprintf("p.content ILIKE $%d", argID)) // Case-insensitive search
+		args = append(args, "%"+filter.Content+"%")                                // Like search
+		argID++
 	}
 
+	whereClause := ""
+	if len(conditions) > 0 {
+		whereClause = "WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	// Default limit
 	var limit, offset int64
-	if filter.Limit != 0 {
+	if filter.Limit > 0 {
 		limit = filter.Limit
 	}
-	if filter.Page != 0 && filter.Limit != 0 {
-		offst := (filter.Page - 1) * (filter.Limit)
-		filter.Offset = offst
-	}
-	if filter.Offset != 0 {
-		offset = filter.Offset
+	if filter.Page > 0 && filter.Limit > 0 {
+		offset = (filter.Page - 1) * filter.Limit
 	}
 
-	query := fmt.Sprintf(`SELECT 
-					COUNT(p.id) OVER () AS total_count,
-					p.id, 
-					p.user_id, 
-					p.title, 
-					p.content, 
-					u.id as user_id,
-					u.firstname as firstname,
-					u.lastname as lastname,
-					u.username as username,
-					u.email as email,
-					u.phone as phone,
-					u.gender,
-					u.role,
-					p.created_at 
-	          FROM posts p 
-	          left join users u on u.id = p.user_id
-			  %s order by created_at desc %s %s `, where, limit, offset)
+	query := fmt.Sprintf(`
+		SELECT 
+			p.id, 
+			p.user_id, 
+			p.title, 
+			p.content, 
+			u.id as user_id,
+			u.firstname as firstname,
+			u.lastname as lastname,
+			u.username as username,
+			u.email as email,
+			u.phone as phone,
+			u.gender,
+			u.role,
+			p.created_at 
+		FROM posts p 
+		LEFT JOIN users u ON u.id = p.user_id
+		%s 
+		ORDER BY p.created_at DESC 
+		LIMIT $%d OFFSET $%d`, whereClause, argID, argID+1)
 
-	rows, err := r.QueryContext(ctx, query)
+	args = append(args, limit, offset)
+
+	log.Println("Generated SQL Query:", query)
+	log.Println("Query Args:", args)
+
+	rows, err := r.DB.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, errors.New("querying users")
+		return nil, fmt.Errorf("querying posts: %w", err)
 	}
 	defer rows.Close()
 
 	var response []*pb.PostGet
-	var count int32
 	for rows.Next() {
 		var post pb.PostGet
 		post.User = &pb.User{}
 		err := rows.Scan(
-			&count,
 			&post.Id,
 			&post.UserId,
 			&post.Title,
@@ -187,8 +201,19 @@ func (r *Repository) GetList(ctx context.Context, filter *pb.FilterPost) (*pb.Po
 		response = append(response, &post)
 	}
 
+	countQuery := `SELECT COUNT(p.id) FROM posts p`
+	if whereClause != "" {
+		countQuery += " " + whereClause
+	}
+
+	var totalCount int32
+	err = r.DB.QueryRow(countQuery, args[:len(args)-2]...).Scan(&totalCount)
+	if err != nil {
+		return nil, fmt.Errorf("counting posts: %w", err)
+	}
+
 	return &pb.PostGetAll{
 		Post:  response,
-		Count: count,
+		Count: totalCount, // `count` o‘rniga `totalCount`
 	}, nil
 }

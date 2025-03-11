@@ -25,24 +25,22 @@ import (
 func (h *Handler) Login(c *gin.Context) {
 	req := pb.LoginRequest{}
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Invalid request payload": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
 		return
 	}
 
 	user, err := h.Clients.User.Login(c, &pb.LoginRequest{Email: req.Email, Password: req.Password})
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User registered with this email not found"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found or incorrect password"})
 		return
 	}
 
-	if !config.CheckPasswordHash(req.Password, user.Username) {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
-		return
-	}
+	tokens := token.GenerateJWTToken(user.Id, user.Email, user.Token)
 
-	tokens := token.GenerateJWTToken(user.Id, user.Username, user.Token)
-
-	c.JSON(http.StatusOK, tokens)
+	c.JSON(http.StatusOK, gin.H{
+		"access_token":  tokens.AccessToken,
+		"refresh_token": tokens.RefreshToken,
+	})
 }
 
 // CreateUser creates a new user
@@ -242,7 +240,7 @@ func (h *Handler) GetUserList(c *gin.Context) {
 // ChangeUserPassword godoc
 // @Summary Change password
 // @Description Updates the password to new one
-// @Tags user
+// @Tags User
 // @Accept json
 // @Produce json
 // @Param request body pb.UserRecoverPasswordRequest true "Change Password Request"

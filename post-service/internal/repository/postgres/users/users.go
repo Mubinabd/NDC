@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"golang.org/x/crypto/bcrypt"
+	"posts/internal/pkg/config"
 	pb "posts/internal/pkg/genproto"
 	"strings"
 )
@@ -40,17 +41,17 @@ func (u *Repository) Create(ctx context.Context, request *pb.UserCreateRequest) 
 	}
 
 	query := `
-		INSERT INTO users (
-		                   first_name, 
-		                   last_name, 
-		                   username, 
-		                   email, 
-		                   phone, 
-		                   gender, 
-		                   password, 
-		                   role)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-	`
+			INSERT INTO users (
+				firstname, 
+				lastname, 
+				username, 
+				email, 
+				phone, 
+				gender, 
+				password, 
+				role
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		`
 
 	_, err = u.DB.ExecContext(
 		ctx,
@@ -86,17 +87,16 @@ func (u *Repository) GetDetail(ctx context.Context, request *pb.ById) (*pb.UserG
 	query := `
 		SELECT 
 		     id,
-		     first_name, 
-		     last_name, 
+		     firstname, 
+		     lastname, 
 		     username, 
 		     email, 
 		     phone, 
 		     gender, 
 		     role,
-		     created_at,
-		     created_by
+		     created_at
 		FROM users 
-			WHERE id = ? and deleted_at = 0
+			WHERE id = $1
 	`
 	var user pb.UserGetResponse
 
@@ -110,7 +110,6 @@ func (u *Repository) GetDetail(ctx context.Context, request *pb.ById) (*pb.UserG
 		&user.Gender,
 		&user.Role,
 		&user.CreatedAt,
-		&user.CreatedBy,
 	)
 	if err != nil {
 		return nil, err
@@ -128,12 +127,12 @@ func (u *Repository) Update(ctx context.Context, request *pb.UserUpdateRequest) 
 
 	if request.FirstName != "" && request.FirstName != "string" {
 		arg = append(arg, request.FirstName)
-		conditions = append(conditions, fmt.Sprintf("first_name = $%d", len(arg)))
+		conditions = append(conditions, fmt.Sprintf("firstname = $%d", len(arg)))
 	}
 
 	if request.LastName != "" && request.LastName != "string" {
 		arg = append(arg, request.LastName)
-		conditions = append(conditions, fmt.Sprintf("last_name = $%d", len(arg)))
+		conditions = append(conditions, fmt.Sprintf("lastname = $%d", len(arg)))
 	}
 
 	if request.Username != "" && request.Username != "string" {
@@ -143,7 +142,7 @@ func (u *Repository) Update(ctx context.Context, request *pb.UserUpdateRequest) 
 
 	if request.PhoneNumber != "" && request.PhoneNumber != "string" {
 		arg = append(arg, request.PhoneNumber)
-		conditions = append(conditions, fmt.Sprintf("phone_number = $%d", len(arg)))
+		conditions = append(conditions, fmt.Sprintf("phone = $%d", len(arg)))
 	}
 
 	if request.Email != "" && request.Email != "string" {
@@ -177,20 +176,24 @@ func (u *Repository) Update(ctx context.Context, request *pb.UserUpdateRequest) 
 
 func (u *Repository) ChangeUserPassword(ctx context.Context, request *pb.UserRecoverPasswordRequest) (*pb.Void, error) {
 	query := `
-		UPDATE users SET password = ?, updated_at = time.Now()
-		WHERE email = ? AND deleted_at is null
+		UPDATE users 
+		SET password = $1, updated_at = NOW()
+		WHERE email = $2 AND deleted_at IS NULL
 	`
 
 	_, err := u.DB.ExecContext(ctx, query, request.NewPassword, request.Email)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error updating password: %w", err)
 	}
-	return nil, nil
+
+	return &pb.Void{}, nil
 }
 
 func (u *Repository) Delete(ctx context.Context, request *pb.ById) (*pb.Void, error) {
 	query := `
-		UPDATE users SET deleted_at = EXTRACT(EPOCH FROM NOW) WHERE id = ?
+		UPDATE users 
+		SET deleted_at = NOW() 
+		WHERE id = $1
 	`
 	_, err := u.DB.ExecContext(ctx, query, request.Id)
 	if err != nil {
@@ -200,69 +203,84 @@ func (u *Repository) Delete(ctx context.Context, request *pb.ById) (*pb.Void, er
 }
 
 func (u *Repository) GetList(ctx context.Context, filter *pb.FilterUser) (*pb.UserGetAll, error) {
+	var args []interface{}
+	var conditions []string
+	argID := 1
 
-	where := fmt.Sprintf(`where deleted_at isnull`)
+	conditions = append(conditions, "deleted_at IS NULL")
+
 	if filter.Role != "" {
-		where += fmt.Sprintf(" and role = '%s'", filter.Role)
+		conditions = append(conditions, fmt.Sprintf("role = $%d", argID))
+		args = append(args, filter.Role)
+		argID++
 	}
 	if filter.Username != "" {
-		where += fmt.Sprintf(" and username = '%s'", filter.Username)
+		conditions = append(conditions, fmt.Sprintf("username = $%d", argID))
+		args = append(args, filter.Username)
+		argID++
 	}
 	if filter.Firstname != "" {
-		where += fmt.Sprintf(" and first_name = '%s'", filter.Firstname)
+		conditions = append(conditions, fmt.Sprintf("firstname = $%d", argID))
+		args = append(args, filter.Firstname)
+		argID++
 	}
 	if filter.Lastname != "" {
-		where += fmt.Sprintf(" and last_name = '%s'", filter.Lastname)
+		conditions = append(conditions, fmt.Sprintf("lastname = $%d", argID))
+		args = append(args, filter.Lastname)
+		argID++
 	}
 	if filter.Gender != "" {
-		where += fmt.Sprintf(" and gender = '%s'", filter.Gender)
+		conditions = append(conditions, fmt.Sprintf("gender = $%d", argID))
+		args = append(args, filter.Gender)
+		argID++
+	}
+
+	whereClause := ""
+	if len(conditions) > 0 {
+		whereClause = "WHERE " + strings.Join(conditions, " AND ")
 	}
 
 	var limit, offset int64
-	if filter.Limit != 0 {
+
+	if filter.Limit > 0 {
 		limit = filter.Limit
 	}
-	if filter.Page != 0 && filter.Limit != 0 {
-		offst := (filter.Page - 1) * (filter.Limit)
-		filter.Offset = offst
-	}
-	if filter.Offset != 0 {
-		offset = filter.Offset
+	if filter.Page > 0 && filter.Limit > 0 {
+		offset = (filter.Page - 1) * filter.Limit
 	}
 
 	query := fmt.Sprintf(`
-				select 
-				    COUNT(id) OVER () AS total_count,
-				    id, 
-				    first_name,
-				    last_name,
-				    username,
-				    email,
-				    phone,
-				    gender,
-				    role 
-				from users %s 
-				order by created_at desc %s %s`, where, limit, offset)
+							SELECT 
+								id, 
+								firstname,
+								lastname,
+								username,
+								email,
+								phone,
+								gender,
+								role 
+							FROM users %s 
+							ORDER BY created_at DESC 
+							LIMIT $%d OFFSET $%d`, whereClause, argID, argID+1)
 
-	rows, err := u.QueryContext(ctx, query)
+	args = append(args, limit, offset)
+
+	rows, err := u.DB.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, errors.New("querying users")
+		return nil, fmt.Errorf("querying users: %w", err)
 	}
 	defer rows.Close()
 
 	var response []*pb.UserGetList
-	var count int32
 	for rows.Next() {
 		var user pb.UserGetList
 		err := rows.Scan(
-			&count,
 			&user.Id,
 			&user.FirstName,
 			&user.LastName,
 			&user.Username,
 			&user.Email,
 			&user.PhoneNumber,
-			&user.Email,
 			&user.Gender,
 			&user.Role,
 		)
@@ -271,26 +289,51 @@ func (u *Repository) GetList(ctx context.Context, filter *pb.FilterUser) (*pb.Us
 		}
 		response = append(response, &user)
 	}
+	countArgs := args[:len(args)-2]
+	countQuery := `SELECT COUNT(*) FROM users`
+	if whereClause != "" {
+		countQuery += " " + whereClause
+	}
+
+	var totalCount int32
+	if len(countArgs) > 0 {
+		err := u.DB.QueryRow(countQuery, countArgs...).Scan(&totalCount)
+		if err != nil {
+			return nil, fmt.Errorf("counting users: %w", err)
+		}
+	} else {
+		err := u.DB.QueryRow(countQuery).Scan(&totalCount)
+		if err != nil {
+			return nil, fmt.Errorf("counting users: %w", err)
+		}
+	}
 
 	return &pb.UserGetAll{
 		User:  response,
-		Count: count,
+		Count: totalCount,
 	}, nil
 }
 
 func (u *Repository) Login(ctx context.Context, request *pb.LoginRequest) (*pb.LoginResponse, error) {
+
 	query := `
-		SELECT id, email
-		FROM users WHERE email = ? AND password = ? AND deleted_at is null
+		SELECT id, email, password
+		FROM users WHERE email = $1 AND deleted_at is null
 	`
 
 	var user pb.LoginResponse
+	var hashedPassword string
 
-	err := u.DB.QueryRowContext(ctx, query, request.Email, request.Password).Scan(
-		&user.Id, &user.Username,
+	err := u.DB.QueryRowContext(ctx, query, request.Email).Scan(
+		&user.Id, &user.Email, &hashedPassword,
 	)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("user not found")
 	}
+
+	if !config.CheckPasswordHash(request.Password, hashedPassword) {
+		return nil, errors.New("invalid password")
+	}
+
 	return &user, nil
 }

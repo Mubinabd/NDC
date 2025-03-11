@@ -25,14 +25,12 @@ type Config struct {
 func New() *Config {
 	var config Config
 
-	// Yaml faylni ochish
 	file, err := os.Open("config.yml")
 	if err != nil {
 		log.Fatalf("Failed to open config file: %v", err)
 	}
 	defer file.Close()
 
-	// YAML faylni o'qish
 	decoder := yaml.NewDecoder(file)
 	if err := decoder.Decode(&config); err != nil {
 		log.Fatalf("Failed to parse config file: %v", err)
@@ -43,11 +41,11 @@ func New() *Config {
 
 	// PostgreSQL configuration
 	config.PostgresHost = cast.ToString(getEnv("POSTGRES_HOST", "localhost"))
-	config.PostgresPort = cast.ToString(getEnv("POSTGRES_PORT", "5432"))
+	config.PostgresPort = cast.ToString(getEnv("POSTGRES_PORT", "5433"))
 	config.PostgresUser = cast.ToString(getEnv("POSTGRES_USER", "postgres"))
 	config.PostgresPassword = cast.ToString(getEnv("POSTGRES_PASSWORD", "1"))
 	config.PostgresDatabase = cast.ToString(getEnv("POSTGRES_DATABASE", "posts"))
-	config.KafkaUrl = cast.ToString(getEnv("KAFKA_URL", ":9092"))
+	config.KafkaUrl = cast.ToString(getEnv("KAFKA_URL", "kafka_posts:9092"))
 	config.GRPCPort = cast.ToString(getEnv("GRPC_PORT", ":7001"))
 
 	return &config

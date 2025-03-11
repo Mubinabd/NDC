@@ -45,8 +45,8 @@ func Load() Config {
 	config.PostgresUser = cast.ToString(getEnv("POSTGRES_USER", "postgres"))
 	config.PostgresPassword = cast.ToString(getEnv("POSTGRES_PASSWORD", "1"))
 	config.PostgresDatabase = cast.ToString(getEnv("POSTGRES_DATABASE", "posts"))
-	config.KafkaUrl = cast.ToString(getEnv("KAFKA_URL", ":9092"))
-	config.GRPCPort = cast.ToString(getEnv("GRPC_PORT", ":7001"))
+	config.KafkaUrl = cast.ToString(getEnv("KAFKA_URL", "kafka_posts:9092"))
+	config.GRPCPort = cast.ToString(getEnv("GRPC_PORT", "posts_service:7001"))
 	config.HttpPort = cast.ToString(getEnv("HTTP_PORT", ":8080"))
 
 	config.DefaultOffset = cast.ToString(getEnv("DEFAULT_OFFSET", "0"))

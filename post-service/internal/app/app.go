@@ -16,7 +16,7 @@ import (
 func Run(cf *config.Config) {
 	// connect to postgres
 	pgm, err := postgres.NewPostgresStorage(cf)
-	cfg := config.New() // Yangi config obyektini yaratish
+	cfg := config.New()
 	log.Printf("Connecting to DB: %s:%s", cfg.PostgresHost, cfg.PostgresPort)
 
 	// connect to kafka producer
