@@ -20,14 +20,12 @@ func NewPostgresStorage(cfg *config.Config) (*PostgresStorage, error) {
 		cfg.PostgresHost, cfg.PostgresPort, cfg.PostgresUser, cfg.PostgresPassword, cfg.PostgresDatabase,
 	)
 
-	// Ulash
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		log.Printf("Failed to open DB: %v", err)
 		return nil, err
 	}
 
-	// Ulanuvchanligini tekshirish
 	if err := db.Ping(); err != nil {
 		log.Printf("Failed to ping DB: %v", err)
 		return nil, err

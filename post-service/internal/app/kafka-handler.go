@@ -52,25 +52,6 @@ func (h *KafkaHandler) LogDelete() func(message []byte) {
 	}
 }
 
-func (h *KafkaHandler) LogCreate() func(message []byte) {
-	return func(message []byte) {
-
-		//unmarshal the message
-		var cer pb.LogCreateRequest
-		if err := protojson.Unmarshal(message, &cer); err != nil {
-			log.Fatalf("Failed to unmarshal JSON to Protobuf message: %v", err)
-			return
-		}
-
-		res, err := h.log.Create(context.Background(), &cer)
-		if err != nil {
-			log.Fatal(err)
-			return
-		}
-		log.Printf("Created Log: %+v", res)
-	}
-}
-
 func (h *KafkaHandler) PostUpdate() func(message []byte) {
 	return func(message []byte) {
 
@@ -106,24 +87,5 @@ func (h *KafkaHandler) PostDelete() func(message []byte) {
 			return
 		}
 		log.Printf("Deleted Post: %+v", res)
-	}
-}
-
-func (h *KafkaHandler) PostCreate() func(message []byte) {
-	return func(message []byte) {
-
-		//unmarshal the message
-		var cer pb.PostCreateRequest
-		if err := protojson.Unmarshal(message, &cer); err != nil {
-			log.Fatalf("Failed to unmarshal JSON to Protobuf message: %v", err)
-			return
-		}
-
-		res, err := h.post.Create(context.Background(), &cer)
-		if err != nil {
-			log.Fatal(err)
-			return
-		}
-		log.Printf("Created Post: %+v", res)
 	}
 }

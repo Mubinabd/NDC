@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"strings"
 
 	pb "posts/internal/pkg/genproto"
@@ -33,7 +32,7 @@ func (r *Repository) Create(ctx context.Context, request *pb.PostCreateRequest) 
 		request.Content,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to insert user: %w", err)
+		return nil, fmt.Errorf("failed to insert posts: %w", err)
 	}
 
 	response := pb.PostCreateResponse{
@@ -125,8 +124,8 @@ func (r *Repository) GetList(ctx context.Context, filter *pb.FilterPost) (*pb.Po
 		argID++
 	}
 	if filter.Content != "" {
-		conditions = append(conditions, fmt.Sprintf("p.content ILIKE $%d", argID)) // Case-insensitive search
-		args = append(args, "%"+filter.Content+"%")                                // Like search
+		conditions = append(conditions, fmt.Sprintf("p.content ILIKE $%d", argID))
+		args = append(args, "%"+filter.Content+"%")
 		argID++
 	}
 
@@ -135,7 +134,6 @@ func (r *Repository) GetList(ctx context.Context, filter *pb.FilterPost) (*pb.Po
 		whereClause = "WHERE " + strings.Join(conditions, " AND ")
 	}
 
-	// Default limit
 	var limit, offset int64
 	if filter.Limit > 0 {
 		limit = filter.Limit
@@ -166,9 +164,6 @@ func (r *Repository) GetList(ctx context.Context, filter *pb.FilterPost) (*pb.Po
 		LIMIT $%d OFFSET $%d`, whereClause, argID, argID+1)
 
 	args = append(args, limit, offset)
-
-	log.Println("Generated SQL Query:", query)
-	log.Println("Query Args:", args)
 
 	rows, err := r.DB.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -214,6 +209,6 @@ func (r *Repository) GetList(ctx context.Context, filter *pb.FilterPost) (*pb.Po
 
 	return &pb.PostGetAll{
 		Post:  response,
-		Count: totalCount, // `count` o‘rniga `totalCount`
+		Count: totalCount,
 	}, nil
 }

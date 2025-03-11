@@ -33,7 +33,7 @@ func (r *Repository) Create(ctx context.Context, request *pb.LogCreateRequest) (
 		request.ServiceName,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to insert user: %w", err)
+		return nil, fmt.Errorf("failed to insert logs: %w", err)
 	}
 
 	response := pb.LogCreateResponse{
@@ -114,25 +114,20 @@ func (r *Repository) Delete(ctx context.Context, request *pb.GetId) (*pb.LogVoid
 }
 
 func (r *Repository) GetList(ctx context.Context, filter *pb.FilterLog) (*pb.LogGetAll, error) {
-	// Asosiy WHERE sharti
 	where := `WHERE deleted_at IS NULL`
 	var args []interface{}
 
-	// Agar Level berilgan bo‘lsa, shartga qo‘shamiz
 	if filter.Level != "" {
 		args = append(args, filter.Level)
 		where += fmt.Sprintf(" AND level = $%d", len(args))
 	}
 
-	// Agar ServiceName berilgan bo‘lsa, shartga qo‘shamiz
 	if filter.ServiceName != "" {
 		args = append(args, filter.ServiceName)
 		where += fmt.Sprintf(" AND service_name = $%d", len(args))
 	}
 
-	// Limit va Offset hisoblash
-	limit := int64(10) // Default limit
-	offset := int64(0) // Default offset
+	var limit, offset int64
 
 	if filter.Limit > 0 {
 		limit = filter.Limit
@@ -143,7 +138,6 @@ func (r *Repository) GetList(ctx context.Context, filter *pb.FilterLog) (*pb.Log
 
 	args = append(args, limit, offset)
 
-	// Yakuniy SQL so‘rovi
 	query := fmt.Sprintf(`
 		SELECT 
 			COUNT(id) OVER () AS total_count,
@@ -155,14 +149,12 @@ func (r *Repository) GetList(ctx context.Context, filter *pb.FilterLog) (*pb.Log
 		FROM logs 
 		%s ORDER BY created_at DESC LIMIT $%d OFFSET $%d`, where, len(args)-1, len(args))
 
-	// Queryni ishlatamiz
 	rows, err := r.DB.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, errors.New("querying logs")
 	}
 	defer rows.Close()
 
-	// Natijalarni o‘qish
 	var response []*pb.LogGetResponse
 	var count int32
 	for rows.Next() {
